@@ -75,13 +75,14 @@ shelter.nordics.filt %>% ggplot()+
                                      fill=NA,
                                      size=0.5),
         axis.title = element_text(size = 14)) +
+  
    annotate("text",
            x = 27.5,
            y = 55, 
-           label = "CRS: 4326",
-           size = 2.85)+
+           label = "Source: OpenStreetMap",
+           size = 2.5)+
   
-  labs(title = "Camping shelters in the Nordics", x = "", y = "")+
+  labs(title = "Camping shelters in the Nordics", x = "", y = "") +
   
   ggspatial::annotation_scale(
     location = "br") +
@@ -96,4 +97,22 @@ shelter.nordics.filt %>% ggplot()+
       fill = c("grey40", "white"),
       line_col = "grey20")
   )
+
+
+# Interactive webmap ------------------------------------------------------
+
+shelter.nordics.filt %>% 
+  leaflet() %>%
+  addProviderTiles(providers$CartoDB.Positron, 
+                   group = "Basemap - greyscale") %>% #adding basemaps
+  addProviderTiles(providers$CartoDB.DarkMatter, 
+                   group = "Basemap - dark") %>%
+  addLayersControl(
+    baseGroups = c("Basemap - greyscale", "Basemap - dark"), # adding control for base maps
+    options = layersControlOptions(collapsed = TRUE)) %>% 
+  clearShapes() %>%
+  addCircles(color = "#14232A",
+             popup = ~paste(name),
+             highlightOptions = highlightOptions(color = "#E2068A"))
+
 
