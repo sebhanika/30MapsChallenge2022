@@ -50,7 +50,7 @@ library(RColorBrewer)
 
 
 
-
+cityname <- "Malmö"
 
 # Query for bike infrastrucutre points
 q.bike.infra <- opq(bbox = cityname,
@@ -92,10 +92,45 @@ bike.lanes <- rbind(bike.lanes.raw, bike.lanes.raw.hw)
 bike.lanes <- bike.lanes %>% 
   mutate(type = ifelse(is.na(cycleway), highway, cycleway)) %>% 
   select(-c(cycleway, highway)) %>% 
-  filter(type %!in% c('no', 'none', 'designated')) 
-#%>% 
- # mutate(type = ifelse(type %!in% c('cycleway', 'track', 'lane'), "other", type))
+  filter(type %!in% c('no', 'none', 'designated')) %>% 
+  mutate(type = ifelse(type %!in% c('cycleway', 'track', 'lane'), "other", type))
 
+
+
+
+
+
+
+# Trying out stuff --------------------------------------------------------
+
+
+
+
+
+
+
+
+
+# Query for cycleways, lines
+try.total <- opq(bbox = cityname,
+                       timeout = 500) %>% 
+  add_osm_feature(key = 'highway') %>% 
+  osmdata_sf()
+
+try.total.lines <- try.total$osm_lines %>% 
+  select(name, highway, bicycle, geometry) %>% 
+  filter(bicycle %in% c('yes', 'designated'))
+
+
+ggplot()+
+  #geom_sf(data = bike.infra.raw,
+  #       aes(shape = amenity), size = 0.4) +
+  
+  geom_sf(data = bike.lanes, color = "grey50") 
+  #geom_sf(data = try.total.lines, color = "red") 
+  
+
+colnames(try.total.lines)
 
 
 
