@@ -33,20 +33,75 @@ library(leaflet)
 # Query OSM data ----------------------------------------------------------
 
 
-# build query
-osm.query <- opq(bbox = 'copenhagen, denmark',
-                 nodes_only = T,
-                 timeout = 500) %>% 
-  add_osm_feature(key = 'amenity', value = 'bicycle_parking')
+cityname <- 'Copenhagen'
 
-#call query, can take a while 
-bikes.query <- osmdata_sf(osm.query)
+
+boundaries <- opq(bbox = cityname) %>%
+  add_osm_feature(key = 'admin_level', value = '7') %>% 
+  osmdata_sf %>% unique_osmdata
+
+
+municipalities <- boundaries$osm_multipolygons %>% 
+  filter(grepl("Copenhagen|Frederiksberg ", name.en))
+
+
+
+ggplot()+
+  geom_sf(data = municipalities)
+
+
+
+
+# Query for bike infrastrucutre points
+q.bike.infra <- opq(bbox = cityname,
+                    nodes_only = T,
+                    timeout = 500) %>% 
+  add_osm_feature(key = 'amenity', value = c('bicycle_parking', 'bicycle_rental')) %>% 
+  osmdata_sf()
 
 #extract points
-bikes.raw <- bikes.query$osm_points
+bike.infra.raw <- q.bike.infra$osm_points
 
 
 
 
-bikes.raw %>% ggplot()+
-  geom_sf(size = 0.4, shape = 2, color = "grey20")
+# Query for cyclways, liness
+q.bike.lanes <- opq(bbox = cityname,
+                    timeout = 500) %>% 
+  add_osm_feature(key = 'cycleway', value = c('lane', 'track', 'share_busway')) %>% 
+  osmdata_sf()
+
+#extract lines
+bike.lanes.raw <- q.bike.lanes$osm_lines
+
+
+
+
+
+# Query for cyclways, liness
+q.bike.lanes.hw <- opq(bbox = cityname,
+                    timeout = 500) %>% 
+  add_osm_feature(key = 'highway', value = c('cycleway')) %>% 
+  osmdata_sf()
+
+#extract lines
+bike.lanes.raw.hw <- q.bike.lanes.hw$osm_lines
+
+
+
+ggplot()+
+  geom_sf(data = bike.infra.raw,
+          aes(color = amenity), size = 0.4, shape = 2) +
+  geom_sf(data = bike.lanes.raw) +
+  geom_sf(data = bike.lanes.raw.hw, color = "green")
+
+
+
+
+leaflet() %>%
+  addProviderTiles(providers$OpenStreetMap) %>% 
+  addCircles(data = bike.infra.raw,
+             color = "#14232A", radius = 0.01) %>% 
+  addPolylines(data = bike.lanes.raw.hw, color = "red") %>% 
+  addPolylines(data = bike.lanes.raw, color = "orange")
+  
