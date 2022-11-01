@@ -69,50 +69,19 @@ shelter.nordics.filt <- st_intersection(shelter.raw, nordics)
 # Plot map ----------------------------------------------------------------
 
 shelter.nordics.filt %>% ggplot()+
-  geom_sf(size = 0.4, shape = 2, color = "grey20") + 
+  geom_sf(size = 0.4, shape = 1, color = "grey90") + 
   theme_void()+
-  theme(panel.border = element_rect(colour = "black", 
-                                     fill=NA,
-                                     size=0.5),
+  theme(panel.background = element_rect(fill = "grey10"),
         axis.title = element_text(size = 14)) +
-  
+
    annotate("text",
-           x = 27.5,
+           x = 27,
            y = 55, 
-           label = "Source: OpenStreetMap",
-           size = 2.5)+
-  
-  labs(title = "Camping shelters in the Nordics", x = "", y = "") +
-  
-  ggspatial::annotation_scale(
-    location = "br") +
-  ggspatial::annotation_north_arrow(
-    location = "br",
-    height = unit(0.75, "cm"),
-    width = unit(0.75, "cm"),
-    which_north = "true",
-    pad_x = unit(0.1, "cm"),
-    pad_y = unit(0.6, "cm"),
-    style = ggspatial::north_arrow_fancy_orienteering(
-      fill = c("grey40", "white"),
-      line_col = "grey20")
-  )
+           label = "Camping shelters in the Nordics \n© OpenStreetMap contributors",
+           size = 3,
+           color = "grey90") +
+  labs(title = "", x = "", y = "") 
 
 
-# Interactive webmap ------------------------------------------------------
-
-shelter.nordics.filt %>% 
-  leaflet() %>%
-  addProviderTiles(providers$CartoDB.Positron, 
-                   group = "Basemap - greyscale") %>% #adding basemaps
-  addProviderTiles(providers$CartoDB.DarkMatter, 
-                   group = "Basemap - dark") %>%
-  addLayersControl(
-    baseGroups = c("Basemap - greyscale", "Basemap - dark"), # adding control for base maps
-    options = layersControlOptions(collapsed = TRUE)) %>% 
-  clearShapes() %>%
-  addCircles(color = "#14232A",
-             popup = ~paste(name),
-             highlightOptions = highlightOptions(color = "#E2068A"))
-
+ggsave('points.png', width = 12, height = 17, units = 'cm')
 
