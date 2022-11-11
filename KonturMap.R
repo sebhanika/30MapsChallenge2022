@@ -27,14 +27,18 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()))
 # Libraries and setup -----------------------------------------------------
 
 library(tidyverse)
+library(viridis)
 library(rgdal)
+library(leaflet)
 library(sf)
 library(downloader)
 library(R.utils)
 library(osmdata)
 
 
-# get data from eurostat
+# download kontur data ----------------------------------------------------
+
+#download Konutr data
 url.kontur.data <- "https://geodata-eu-central-1-kontur-public.s3.amazonaws.com/kontur_datasets/kontur_population_20220630.gpkg.gz"
 download(url = url.kontur.data, 
          dest="kontur_data.gz",
@@ -47,24 +51,34 @@ R.utils::gunzip("kontur_data.gz", destname = "kontur_data.gpkg")
 # OSM boundries -----------------------------------------------------------
 
 
-boundaries <- opq(bbox = "Brandenburg") %>%
-     add_osm_feature(key = 'admin_level', value = '4') %>% 
-     osmdata_sf %>% unique_osmdata
-
-
-Brb.bb <- boundaries$osm_multipolygons %>% 
-  filter(name %in% c("Brandenburg", "Berlin"))
-
-
-brb.bb.merged <- Brb.bb %>% 
-  summarise(geometry = sf::st_union(geometry)) %>%
-  ungroup()
+# There are two options depending on what you want to achieve. 
+# Either get a squared bounding box of the place
+# Or get the exact boundires, however this does not work for every place
 
 
 
 
+pol.berlin <- getbb(place.name, format_out = 'polygon')
 
-wkt2 = st_as_text(st_geometry(st_transform(brb.bb.merged, 3857)))
+#stop here to get the exact polygons
+borders.berlin <- st_polygon(pol[1]) %>%
+                st_sfc(crs = 4326) %>% 
+                st_transform(3857)
+
+# here you get the squared bounding box
+bbox <- st_as_sfc(sf::st_bbox(borders))
+
+
+
+
+wkt2 = st_as_text(st_geometry(x))
+
+
+
+
+
+
+
 
 
 
@@ -77,7 +91,7 @@ wkt2 = st_as_text(st_geometry(st_transform(brb.bb.merged, 3857)))
 #                 query='SELECT * FROM population WHERE FID ="1"')
 
 
-data <- st_read(dsn = 'kontur_data.gpkg', layer = "population",
+data <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
                 wkt_filter = wkt2)
 
 
