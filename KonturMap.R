@@ -34,6 +34,7 @@ library(sf)
 library(downloader)
 library(R.utils)
 library(osmdata)
+library(cowplot)
 
 
 # download kontur data ----------------------------------------------------
@@ -51,27 +52,203 @@ R.utils::gunzip("kontur_data.gz", destname = "kontur_data.gpkg")
 # OSM boundries -----------------------------------------------------------
 
 
-# There are two options depending on what you want to achieve. 
-# Either get a squared bounding box of the place
-# Or get the exact boundires, however this does not work for every place
+
+# getting mask
+
+place.names <- c("Andorra", "Liechtenstein", "San Marino")
+pol.borders <- list()
+borders <- list()
+wkt <- list()
+data.try <- list()
+
+
+for (i in place.names){
+  
+  pol.borders <- getbb(i, format_out = 'polygon', featuretype = "country")
+  
+  borders[i] <- st_polygon(list(pol.borders)) %>%
+    st_sfc(crs = 4326) %>% 
+    st_transform(3857) %>% 
+    st_geometry() %>% 
+    st_as_text()
+  
+
+ data.try[[i]] <- as.data.frame(st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
+                        wkt_filter = borders[[i]]))
+  
+  
+}
+
+
+data.comb <- bind_rows(data.try, .id = "country")
+
+
+pop_range <- range(data.comb$population)
 
 
 
 
-pol.berlin <- getbb(place.name, format_out = 'polygon')
+
+
+
+maps_shared <- map(.x = place.names, 
+                   .f = function(x) data.comb %>% 
+                     filter(country == x) %>% 
+                     ggplot(aes(fill = population, geometry = "geom")) +
+                     geom_sf(lwd = NA) +
+                     theme_bw() +
+                     theme(axis.text = element_blank(),
+                           axis.ticks = element_blank()))
+
+
+
+
+## use COWplot to combine and add single legend
+plot_grid(plotlist = c(map(.x = maps_shared,
+                           .f = function(x) x + theme(legend.position = 'none'))),
+          labels = LETTERS[1:3], label_size = 10, nrow = 2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#shared legend, not yet working
+
+maps_shared <- map(.x = place.names, 
+                   .f = function(x) data.comb %>% 
+                     filter(country == x) %>% 
+                     ggplot(aes(fill = population, geometry = "geom")) +
+                     geom_sf(lwd = NA) +
+                     scale_fill_continuous(limits = pop_range,
+                                           name = 'Pop') +
+                     theme_bw() +
+                     theme(axis.text = element_blank(),
+                           axis.ticks = element_blank()))
+
+
+
+
+## use COWplot to combine and add single legend
+plot_grid(plotlist = c(map(.x = maps_shared,
+                           .f = function(x) x + theme(legend.position = 'none')),
+                       list(get_legend(maps_shared[[1]]))),
+          labels = LETTERS[1:3], label_size = 10, nrow = 2)
+
+
+
+
+
+
+rm(maps_shared)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# getting berlin mask
+
+place.name1 <- "berlin, Germany"
+
+pol.borders <- getbb(place.name1, format_out = 'polygon')
 
 #stop here to get the exact polygons
-borders.berlin <- st_polygon(pol[1]) %>%
+borders.ber <- st_polygon(pol.borders[1]) %>%
                 st_sfc(crs = 4326) %>% 
                 st_transform(3857)
 
+  
+
+
+wkt.ber = st_as_text(st_geometry(borders.ber))
+
+
+
+# getting Los Angeles mask
+
+place.name2 <- "Madrid"
+
+pol.la <- getbb("Madrid", format_out = 'polygon', featuretype = "city")
+
+#stop here to get the exact polygons
+borders.la <- st_polygon(pol.la[1]) %>%
+  st_sfc(crs = 4326) %>% 
+  st_transform(3857)
+
+
+
+
 # here you get the squared bounding box
-bbox <- st_as_sfc(sf::st_bbox(borders))
+bbox.la <- st_as_sfc(sf::st_bbox(borders.la))
+
+wkt.la = st_as_text(st_geometry(bbox.la))
 
 
 
 
-wkt2 = st_as_text(st_geometry(x))
+
+# getting Los Angeles mask
+
+place.name3 <- "Liechtenstein"
+
+pol.bur <- getbb(place.name3, format_out = 'polygon', featuretype = "country")
+
+#stop here to get the exact polygons
+borders.bur <- st_polygon(list(pol.bur)) %>%
+  st_sfc(crs = 4326) %>% 
+  st_transform(3857)
+
+
+
+
+# here you get the squared bounding box
+bbox.bur <- st_as_sfc(sf::st_bbox(borders.bur))
+
+wkt.bur = st_as_text(st_geometry(borders.bur))
+
+
+
+
+data.bur <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
+                   wkt_filter = wkt.bur)
+
+
+
+ggplot(data = data.bur) +
+  geom_sf(aes(fill = population), lwd = NA) +
+  theme_void()
+
 
 
 
@@ -91,37 +268,102 @@ wkt2 = st_as_text(st_geometry(x))
 #                 query='SELECT * FROM population WHERE FID ="1"')
 
 
-data <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
-                wkt_filter = wkt2)
+data.ber <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
+                wkt_filter = wkt.ber)
+
+
+data.la <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
+                    wkt_filter = wkt.la)
+
+
+
+data.ber.new <- data.ber %>% 
+  mutate(city = "Berlin")
+
+data.comb <- data.la %>% 
+  mutate(city = "Los Angeles") %>% 
+  rbind(data.ber.new)
+
+
+pop_range <- range(data.comb$population)
+
+
+cities <- c("Berlin", "Los Angeles")
+
+
+maps_shared <- map(.x = cities, 
+                   .f = function(x) data.comb %>% 
+                     filter(city == x) %>% 
+                     ggplot(aes(fill = population)) +
+                     geom_sf(lwd = NA) +
+                     scale_fill_continuous(limits = pop_range,
+                                           name = 'Pop') +
+                     theme_bw() +
+                     theme(axis.text = element_blank(),
+                           axis.ticks = element_blank()))
 
 
 
 
-ggplot()+
-  geom_sf(data = data, aes(fill = population)) +
-  scale_fill_viridis() + theme_bw()
+## use COWplot to combine and add single legend
+plot_grid(plotlist = c(map(.x = maps_shared,
+                           .f = function(x) x + theme(legend.position = 'none')),
+                       list(get_legend(maps_shared[[1]]))),
+          labels = LETTERS[1:1], label_size = 10, nrow = 2)
+
+
+
+
+
+
+
+  
 
 
 
 # example -----------------------------------------------------------------
 
 
-nc = st_read(system.file("shape/nc.shp", package="sf"))
-#> Reading layer `nc' from data source 
-#>   `/tmp/RtmpH4YqwH/temp_libpath649bcfb769e/sf/shape/nc.shp' using driver `ESRI Shapefile'
-#> Simple feature collection with 100 features and 14 fields
-#> Geometry type: MULTIPOLYGON
-#> Dimension:     XY
-#> Bounding box:  xmin: -84.32385 ymin: 33.88199 xmax: -75.45698 ymax: 36.58965
-#> Geodetic CRS:  NAD27
-summary(nc) # note that AREA was computed using Euclidian area on lon/lat degrees
+
+# benfords law ------------------------------------------------------------
 
 
 
-# spatial filter, as wkt:
-wkt = st_as_text(st_geometry(nc[1,]))
-# filter by (bbox overlaps of) first feature geometry:
-st_read(system.file("gpkg/nc.gpkg", package="sf"), wkt_filter = wkt)
+library(benford.analysis)
+
+hist(data.comb$population)
+
+
+# perform benford analysis
+trends.ber = benford(data.ber$population, number.of.digits = 1, discrete = T, sign = "positive") 
+
+
+# plot results
+plot(trends.ber)
+
+
+# perform benford analysis
+trends.mad = benford(data.la$population, number.of.digits = 1, discrete = T, sign = "positive") 
+
+
+# plot results
+plot(trends.mad)
 
 
 
+leaflet(pol.la$multipolygon) %>% 
+  addPolygons() %>% 
+  addProviderTiles(provider = "CartoDB")
+
+
+
+
+leaflet(pol.la) %>% 
+  addPolygons() %>% 
+  addProviderTiles(provider = "CartoDB")
+
+
+
+
+# here you get the squared bounding box
+#bbox.ber <- st_as_sfc(sf::st_bbox(borders.ber))
