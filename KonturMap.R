@@ -58,10 +58,9 @@ R.utils::gunzip("kontur_data.gz", destname = "kontur_data.gpkg")
 place.names <- c("Andorra", "Liechtenstein", "San Marino")
 pol.borders <- list()
 borders <- list()
-wkt <- list()
 data.try <- list()
 
-
+# loop through place names, takes a long time, should change it to be faster
 for (i in place.names){
   
   pol.borders <- getbb(i, format_out = 'polygon', featuretype = "country")
@@ -72,228 +71,20 @@ for (i in place.names){
     st_geometry() %>% 
     st_as_text()
   
-
- data.try[[i]] <- as.data.frame(st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
-                        wkt_filter = borders[[i]]))
-  
-  
+  data.try[[i]] <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
+                           wkt_filter = borders[[i]])
 }
 
+#combine sf_dataframes together for plotting
+data.comb <- sf::st_as_sf(data.table::rbindlist(data.try, idcol = "country"))
 
-data.comb <- bind_rows(data.try, .id = "country")
-
-
+# max range for common legend
 pop_range <- range(data.comb$population)
-
-
-
-
-
 
 
 maps_shared <- map(.x = place.names, 
                    .f = function(x) data.comb %>% 
                      filter(country == x) %>% 
-                     ggplot(aes(fill = population, geometry = "geom")) +
-                     geom_sf(lwd = NA) +
-                     theme_bw() +
-                     theme(axis.text = element_blank(),
-                           axis.ticks = element_blank()))
-
-
-
-
-## use COWplot to combine and add single legend
-plot_grid(plotlist = c(map(.x = maps_shared,
-                           .f = function(x) x + theme(legend.position = 'none'))),
-          labels = LETTERS[1:3], label_size = 10, nrow = 2)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#shared legend, not yet working
-
-maps_shared <- map(.x = place.names, 
-                   .f = function(x) data.comb %>% 
-                     filter(country == x) %>% 
-                     ggplot(aes(fill = population, geometry = "geom")) +
-                     geom_sf(lwd = NA) +
-                     scale_fill_continuous(limits = pop_range,
-                                           name = 'Pop') +
-                     theme_bw() +
-                     theme(axis.text = element_blank(),
-                           axis.ticks = element_blank()))
-
-
-
-
-## use COWplot to combine and add single legend
-plot_grid(plotlist = c(map(.x = maps_shared,
-                           .f = function(x) x + theme(legend.position = 'none')),
-                       list(get_legend(maps_shared[[1]]))),
-          labels = LETTERS[1:3], label_size = 10, nrow = 2)
-
-
-
-
-
-
-rm(maps_shared)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# getting berlin mask
-
-place.name1 <- "berlin, Germany"
-
-pol.borders <- getbb(place.name1, format_out = 'polygon')
-
-#stop here to get the exact polygons
-borders.ber <- st_polygon(pol.borders[1]) %>%
-                st_sfc(crs = 4326) %>% 
-                st_transform(3857)
-
-  
-
-
-wkt.ber = st_as_text(st_geometry(borders.ber))
-
-
-
-# getting Los Angeles mask
-
-place.name2 <- "Madrid"
-
-pol.la <- getbb("Madrid", format_out = 'polygon', featuretype = "city")
-
-#stop here to get the exact polygons
-borders.la <- st_polygon(pol.la[1]) %>%
-  st_sfc(crs = 4326) %>% 
-  st_transform(3857)
-
-
-
-
-# here you get the squared bounding box
-bbox.la <- st_as_sfc(sf::st_bbox(borders.la))
-
-wkt.la = st_as_text(st_geometry(bbox.la))
-
-
-
-
-
-# getting Los Angeles mask
-
-place.name3 <- "Liechtenstein"
-
-pol.bur <- getbb(place.name3, format_out = 'polygon', featuretype = "country")
-
-#stop here to get the exact polygons
-borders.bur <- st_polygon(list(pol.bur)) %>%
-  st_sfc(crs = 4326) %>% 
-  st_transform(3857)
-
-
-
-
-# here you get the squared bounding box
-bbox.bur <- st_as_sfc(sf::st_bbox(borders.bur))
-
-wkt.bur = st_as_text(st_geometry(borders.bur))
-
-
-
-
-data.bur <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
-                   wkt_filter = wkt.bur)
-
-
-
-ggplot(data = data.bur) +
-  geom_sf(aes(fill = population), lwd = NA) +
-  theme_void()
-
-
-
-
-
-
-
-
-
-
-
-
-# load data ---------------------------------------------------------------
-
-
-# 
-# data <- st_read(dsn = 'kontur_data.gpkg', layer = "population",
-#                 query='SELECT * FROM population WHERE FID ="1"')
-
-
-data.ber <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
-                wkt_filter = wkt.ber)
-
-
-data.la <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
-                    wkt_filter = wkt.la)
-
-
-
-data.ber.new <- data.ber %>% 
-  mutate(city = "Berlin")
-
-data.comb <- data.la %>% 
-  mutate(city = "Los Angeles") %>% 
-  rbind(data.ber.new)
-
-
-pop_range <- range(data.comb$population)
-
-
-cities <- c("Berlin", "Los Angeles")
-
-
-maps_shared <- map(.x = cities, 
-                   .f = function(x) data.comb %>% 
-                     filter(city == x) %>% 
                      ggplot(aes(fill = population)) +
                      geom_sf(lwd = NA) +
                      scale_fill_continuous(limits = pop_range,
@@ -304,24 +95,15 @@ maps_shared <- map(.x = cities,
 
 
 
-
 ## use COWplot to combine and add single legend
 plot_grid(plotlist = c(map(.x = maps_shared,
                            .f = function(x) x + theme(legend.position = 'none')),
                        list(get_legend(maps_shared[[1]]))),
-          labels = LETTERS[1:1], label_size = 10, nrow = 2)
+          labels = LETTERS[1:3])
 
 
 
 
-
-
-
-  
-
-
-
-# example -----------------------------------------------------------------
 
 
 
