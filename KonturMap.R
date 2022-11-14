@@ -54,42 +54,88 @@ R.utils::gunzip("kontur_data.gz", destname = "kontur_data.gpkg")
 
 
 # getting mask
+place.names <- c("Vatican City", "Liechtenstein")
 
-place.names <- c("Andorra", "Liechtenstein", "San Marino")
+
+place.names <- c("Vatican City", "Nauru", "Malta", "Grenada", "Barbados", "Andorra", "Liechtenstein", "San Marino", "Singapore")
 pol.borders <- list()
 borders <- list()
 data.try <- list()
+xplot <- list()
 
 # loop through place names, takes a long time, should change it to be faster
 for (i in place.names){
   
   pol.borders <- getbb(i, format_out = 'polygon', featuretype = "country")
   
-  borders[i] <- st_polygon(list(pol.borders)) %>%
-    st_sfc(crs = 4326) %>% 
-    st_transform(3857) %>% 
-    st_geometry() %>% 
-    st_as_text()
+  if (is.list(pol.borders)) {
+    
+    borders[[i]] <- st_polygon(pol.borders) %>%
+      st_sfc(crs = 4326) %>% 
+      st_transform(3857) %>% 
+      st_geometry() %>% 
+      st_as_text()
+    
+  } else {
+    borders[[i]] <- st_polygon(list(pol.borders)) %>%
+      st_sfc(crs = 4326) %>% 
+      st_transform(3857) %>% 
+      st_geometry() %>% 
+      st_as_text()
+    
+  }
+  
   
   data.try[[i]] <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
                            wkt_filter = borders[[i]])
+  
+  
+  xplot[[i]] <- data.try[[i]] %>% 
+    ggplot(aes(fill = population)) +
+    geom_sf(lwd = NA) +
+    scale_fill_gradient(name = 'Pop', low="#9c9ce3", high="#b3fe74") +
+    theme_void() +
+    theme(axis.text = element_blank(),
+          axis.ticks = element_blank())
+
+  
 }
+
+
+
+invisible(
+  lapply(
+    seq_along(xplot), 
+    function(x) ggsave(filename=paste0("myplot", x, ".png"), plot=xplot[[x]], bg = "white")
+  ) )
+
+
+?seq_along
+
+
+
+
 
 #combine sf_dataframes together for plotting
 data.comb <- sf::st_as_sf(data.table::rbindlist(data.try, idcol = "country"))
 
-# max range for common legend
-pop_range <- range(data.comb$population)
 
 
+
+
+
+
+
+
+
+#shared map 
 maps_shared <- map(.x = place.names, 
                    .f = function(x) data.comb %>% 
                      filter(country == x) %>% 
                      ggplot(aes(fill = population)) +
                      geom_sf(lwd = NA) +
-                     scale_fill_continuous(limits = pop_range,
-                                           name = 'Pop') +
-                     theme_bw() +
+                     scale_fill_gradient(name = 'Pop', low="#9c9ce3", high="#b3fe74") +
+                     theme_void() +
                      theme(axis.text = element_blank(),
                            axis.ticks = element_blank()))
 
@@ -97,9 +143,17 @@ maps_shared <- map(.x = place.names,
 
 ## use COWplot to combine and add single legend
 plot_grid(plotlist = c(map(.x = maps_shared,
-                           .f = function(x) x + theme(legend.position = 'none')),
-                       list(get_legend(maps_shared[[1]]))),
-          labels = LETTERS[1:3])
+                           .f = function(x) x )))
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -108,28 +162,6 @@ plot_grid(plotlist = c(map(.x = maps_shared,
 
 
 # benfords law ------------------------------------------------------------
-
-
-
-library(benford.analysis)
-
-hist(data.comb$population)
-
-
-# perform benford analysis
-trends.ber = benford(data.ber$population, number.of.digits = 1, discrete = T, sign = "positive") 
-
-
-# plot results
-plot(trends.ber)
-
-
-# perform benford analysis
-trends.mad = benford(data.la$population, number.of.digits = 1, discrete = T, sign = "positive") 
-
-
-# plot results
-plot(trends.mad)
 
 
 
