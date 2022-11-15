@@ -1,11 +1,9 @@
 
-#KonturPop
-
 ## ---------------------------
 ##
-## Script name: 
+## Script name: 30DayMapChallenge 21 Kontur Map
 ##
-## Topic:
+## Topic: Making a map with the Kontur Population: Global Population Density dataset 
 ##
 ## Author: Sebastian Hanika
 ##
@@ -13,15 +11,16 @@
 ##
 ## ---------------------------
 ##
-## Notes:
-##   
+## Notes: This scripts downloads the Kontur dataset but crucially does not
+##        load the entire dataset into R. The user can specifiy one or multiple
+##        countries to load and then only the corresponding data is loaded making
+##        it much easier to handle for R.   
 ##
 ## ---------------------------
 
 ## set working directory for to current folder
 
 setwd(dirname(rstudioapi::getActiveDocumentContext()))
-
 
 
 # Libraries and setup -----------------------------------------------------
@@ -33,41 +32,43 @@ library(downloader)
 library(R.utils)
 library(osmdata)
 
-
 # download kontur data ----------------------------------------------------
 
-#download Konutr data
+# this script downloads the entire dataset
+
 url.kontur.data <- "https://geodata-eu-central-1-kontur-public.s3.amazonaws.com/kontur_datasets/kontur_population_20220630.gpkg.gz"
 download(url = url.kontur.data, 
          dest="kontur_data.gz",
          mode="wb") # downloads zip folder into current directory
 
+#unziping the dataset
 R.utils::gunzip("kontur_data.gz", destname = "kontur_data.gpkg")
-
-
 
 # OSM boundries -----------------------------------------------------------
 
+# Specify countries here
+place.names <- c("Nauru", "Andorra", "Grenada", "Barbados", "Liechtenstein")
 
-
-# getting mask
-place.names <- c("United Kingdom", "Liechtenstein", "Barbados")
-
-
-place.names <- c("Vatican City", "Nauru", "Malta", "Grenada", "Barbados", "Andorra", "Liechtenstein", "San Marino", "Singapore")
+# initate lists (too cluncky, might be shortend)
 pol.borders <- list()
 borders <- list()
-data.try <- list()
+data.pop <- list()
 xplot <- list()
 
-# loop through place names, takes a long time, should change it to be faster
+# loop through user specified place names
 for (i in place.names){
   
+  # get polygon of country
   pol.borders <- getbb(i, format_out = 'polygon', featuretype = "country")
   
+  # Checking if borders are saved as a list or not, depends on complexity of country shape
   if (is.list(pol.borders)) {
     
-    borders <- st_polygon(pol.borders[order(sapply(pol.borders, length), decreasing = T)]) %>%
+    # converting polygons into well-known-text for filtering
+    # ordering of list is important otherwise it does not work for some countries (e.g UK)
+    # Reproject of CRS is also neccessary
+    borders <- st_polygon(pol.borders[order(sapply(pol.borders, length),
+                                            decreasing = TRUE)]) %>%
       st_sfc(crs = 4326) %>% 
       st_transform(3857) %>% 
       st_geometry() %>% 
@@ -75,6 +76,7 @@ for (i in place.names){
     
     
   } else {
+    # execute with simple country shapes, simlar steps as above
     borders <- st_polygon(list(pol.borders)) %>%
       st_sfc(crs = 4326) %>% 
       st_transform(3857) %>% 
@@ -83,12 +85,12 @@ for (i in place.names){
     
   }
   
-  
-  data.try[[i]] <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
+  # load country specific data into R
+  data.pop[[i]] <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
                            wkt_filter = borders)
   
-  
-  xplot[[i]] <- data.try[[i]] %>% 
+  # Create list of plots
+  xplot[[i]] <- data.pop[[i]] %>% 
     ggplot(aes(fill = population)) +
     geom_sf(lwd = NA) +
     scale_fill_gradient(name = 'Population', low="#efedf5", high="#756bb1", 
@@ -100,12 +102,13 @@ for (i in place.names){
           legend.position = "bottom",
           panel.grid = element_blank(),
           axis.ticks = element_blank()) 
-
+  
+  # End loop
   
 }
 
 
-# save all plots as pngs
+# save all plots in list as pngs
 invisible(
   lapply(
     seq_along(xplot), 
@@ -128,7 +131,7 @@ invisible(
 
 
 data.try <- list()
-i = "Greece"
+i = "Egypt"
 pol.borders <- getbb(i, format_out = 'polygon', featuretype = "country")
 
 
