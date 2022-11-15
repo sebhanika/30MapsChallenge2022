@@ -32,7 +32,6 @@ library(sf)
 library(downloader)
 library(R.utils)
 library(osmdata)
-library(cowplot)
 
 
 # download kontur data ----------------------------------------------------
@@ -52,7 +51,7 @@ R.utils::gunzip("kontur_data.gz", destname = "kontur_data.gpkg")
 
 
 # getting mask
-place.names <- c("Nauru", "France")
+place.names <- c("United Kingdom", "Liechtenstein", "Barbados")
 
 
 place.names <- c("Vatican City", "Nauru", "Malta", "Grenada", "Barbados", "Andorra", "Liechtenstein", "San Marino", "Singapore")
@@ -68,11 +67,12 @@ for (i in place.names){
   
   if (is.list(pol.borders)) {
     
-    borders <- st_polygon(pol.borders) %>%
+    borders <- st_polygon(pol.borders[order(sapply(pol.borders, length), decreasing = T)]) %>%
       st_sfc(crs = 4326) %>% 
       st_transform(3857) %>% 
       st_geometry() %>% 
       st_as_text()
+    
     
   } else {
     borders <- st_polygon(list(pol.borders)) %>%
@@ -96,7 +96,7 @@ for (i in place.names){
                                                 barwidth = 10)) +
     theme_bw() +
     theme(axis.text = element_blank(),
-          panel.background = element_rect(fill = "grey20"),
+          panel.background = element_rect(fill = "white"),
           legend.position = "bottom",
           panel.grid = element_blank(),
           axis.ticks = element_blank()) 
@@ -111,7 +111,7 @@ invisible(
     seq_along(xplot), 
     function(x) ggsave(filename=paste0("plot_", names(xplot[x]), ".png"), 
                        plot=xplot[[x]],
-                       bg = "grey20",
+                       bg = "white",
                        width = 22,
                        height = 22,
                        unit = "cm")
@@ -127,11 +127,12 @@ invisible(
 
 
 
-
 data.try <- list()
 i = "Greece"
 pol.borders <- getbb(i, format_out = 'polygon', featuretype = "country")
-borders_try <- st_polygon((pol.borders)) %>%
+
+
+borders_try <- st_polygon(pol.borders[order(sapply(pol.borders, length), decreasing = T)]) %>%
   st_sfc(crs = 4326) %>% 
   st_transform(3857) %>% 
   st_geometry() %>% 
@@ -143,10 +144,18 @@ data.try <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
 
 
 
-
-
-ggplot(data = data.try,
+x <- ggplot(data = data.try,
        aes(fill = population)) +
   geom_sf(lwd = NA) 
+
+
+
+
+ggsave(filename="try1.png", 
+       plot=x,
+       bg = "grey20",
+       width = 22,
+       height = 22,
+       unit = "cm")
 
 
