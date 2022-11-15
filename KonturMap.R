@@ -27,9 +27,7 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()))
 # Libraries and setup -----------------------------------------------------
 
 library(tidyverse)
-library(viridis)
 library(rgdal)
-library(leaflet)
 library(sf)
 library(downloader)
 library(R.utils)
@@ -54,7 +52,7 @@ R.utils::gunzip("kontur_data.gz", destname = "kontur_data.gpkg")
 
 
 # getting mask
-place.names <- c("Vatican City", "Liechtenstein")
+place.names <- c("Nauru", "France")
 
 
 place.names <- c("Vatican City", "Nauru", "Malta", "Grenada", "Barbados", "Andorra", "Liechtenstein", "San Marino", "Singapore")
@@ -70,14 +68,14 @@ for (i in place.names){
   
   if (is.list(pol.borders)) {
     
-    borders[[i]] <- st_polygon(pol.borders) %>%
+    borders <- st_polygon(pol.borders) %>%
       st_sfc(crs = 4326) %>% 
       st_transform(3857) %>% 
       st_geometry() %>% 
       st_as_text()
     
   } else {
-    borders[[i]] <- st_polygon(list(pol.borders)) %>%
+    borders <- st_polygon(list(pol.borders)) %>%
       st_sfc(crs = 4326) %>% 
       st_transform(3857) %>% 
       st_geometry() %>% 
@@ -87,97 +85,68 @@ for (i in place.names){
   
   
   data.try[[i]] <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
-                           wkt_filter = borders[[i]])
+                           wkt_filter = borders)
   
   
   xplot[[i]] <- data.try[[i]] %>% 
     ggplot(aes(fill = population)) +
     geom_sf(lwd = NA) +
-    scale_fill_gradient(name = 'Pop', low="#9c9ce3", high="#b3fe74") +
-    theme_void() +
+    scale_fill_gradient(name = 'Population', low="#efedf5", high="#756bb1", 
+                        guide = guide_colourbar(direction = "horizontal", 
+                                                barwidth = 10)) +
+    theme_bw() +
     theme(axis.text = element_blank(),
-          axis.ticks = element_blank())
+          panel.background = element_rect(fill = "grey20"),
+          legend.position = "bottom",
+          panel.grid = element_blank(),
+          axis.ticks = element_blank()) 
 
   
 }
 
 
-
+# save all plots as pngs
 invisible(
   lapply(
     seq_along(xplot), 
-    function(x) ggsave(filename=paste0("myplot", x, ".png"), plot=xplot[[x]], bg = "white")
-  ) )
-
-
-?seq_along
-
-
-
-
-
-#combine sf_dataframes together for plotting
-data.comb <- sf::st_as_sf(data.table::rbindlist(data.try, idcol = "country"))
+    function(x) ggsave(filename=paste0("plot_", names(xplot[x]), ".png"), 
+                       plot=xplot[[x]],
+                       bg = "grey20",
+                       width = 22,
+                       height = 22,
+                       unit = "cm")
+    )
+  )
 
 
 
 
 
+# Trying things -----------------------------------------------------------
 
 
 
 
 
-#shared map 
-maps_shared <- map(.x = place.names, 
-                   .f = function(x) data.comb %>% 
-                     filter(country == x) %>% 
-                     ggplot(aes(fill = population)) +
-                     geom_sf(lwd = NA) +
-                     scale_fill_gradient(name = 'Pop', low="#9c9ce3", high="#b3fe74") +
-                     theme_void() +
-                     theme(axis.text = element_blank(),
-                           axis.ticks = element_blank()))
+data.try <- list()
+i = "Greece"
+pol.borders <- getbb(i, format_out = 'polygon', featuretype = "country")
+borders_try <- st_polygon((pol.borders)) %>%
+  st_sfc(crs = 4326) %>% 
+  st_transform(3857) %>% 
+  st_geometry() %>% 
+  st_as_text()
 
-
-
-## use COWplot to combine and add single legend
-plot_grid(plotlist = c(map(.x = maps_shared,
-                           .f = function(x) x )))
+data.try <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
+                         wkt_filter = borders_try)
 
 
 
 
 
 
+ggplot(data = data.try,
+       aes(fill = population)) +
+  geom_sf(lwd = NA) 
 
 
-
-
-
-
-
-
-
-
-
-# benfords law ------------------------------------------------------------
-
-
-
-leaflet(pol.la$multipolygon) %>% 
-  addPolygons() %>% 
-  addProviderTiles(provider = "CartoDB")
-
-
-
-
-leaflet(pol.la) %>% 
-  addPolygons() %>% 
-  addProviderTiles(provider = "CartoDB")
-
-
-
-
-# here you get the squared bounding box
-#bbox.ber <- st_as_sfc(sf::st_bbox(borders.ber))
