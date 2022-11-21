@@ -44,10 +44,7 @@ download(url = url.kontur.data,
 #unziping the dataset
 R.utils::gunzip("kontur_data.gz", destname = "kontur_data.gpkg")
 
-<<<<<<< HEAD
 
-=======
->>>>>>> ef48f98b2316f76749a4a69dd7e3b6afc601d297
 # OSM boundries -----------------------------------------------------------
 
 # Specify countries here
