@@ -14,11 +14,11 @@
 ## Notes: This scripts downloads the Kontur dataset but crucially does not
 ##        load the entire dataset into R. The user can specifiy one or multiple
 ##        countries to load and then only the corresponding data is loaded making
-##        it much easier to handle for R.   
+##        it much easier to handle for R.  
+##        THe data is sourced from https://data.humdata.org/dataset/kontur-population-dataset
 ##
 ## ---------------------------
 
-## set working directory for to current folder
 
 # Libraries and setup -----------------------------------------------------
 
@@ -32,6 +32,7 @@ library(osmdata)
 # download kontur data ----------------------------------------------------
 
 # this script downloads the entire dataset
+# sourced from https://data.humdata.org/dataset/kontur-population-dataset
 
 url.kontur.data <- "https://geodata-eu-central-1-kontur-public.s3.amazonaws.com/kontur_datasets/kontur_population_20220630.gpkg.gz"
 download(url = url.kontur.data, 
@@ -45,16 +46,16 @@ R.utils::gunzip("kontur_data.gz", destname = "kontur_data.gpkg")
 # OSM boundries -----------------------------------------------------------
 
 # Specify countries here
-place.names <- c("Andorra", "Nauru", "Barbados", 
+country.names <- c("Andorra", "Nauru", "Barbados", 
                   "Mauritius", "Sri Lanka")
 
-# initate lists (too cluncky, might be shortend)
+# initate lists 
 borders <- list()
 data.pop <- list()
 xplot <- list()
 
 # loop through user specified place names
-for (i in place.names){
+for (i in country.names){
   
   # get polygon of country
   pol.borders <- getbb(i, format_out = 'polygon', featuretype = "country")
@@ -90,7 +91,8 @@ for (i in place.names){
   xplot[[i]] <- data.pop[[i]] %>% 
     ggplot(aes(fill = population)) +
     geom_sf(color = NA) +
-    scale_fill_gradient(name = 'Population', low="#efedf5", high="#756bb1", 
+    scale_fill_gradient(name = 'Population',
+                        low="#efedf5", high="#756bb1", 
                         guide = guide_colourbar(direction = "horizontal", 
                                                 barwidth = 10)) +
     theme_bw() +
