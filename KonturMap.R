@@ -23,8 +23,12 @@
 setwd(dirname(rstudioapi::getActiveDocumentContext()))
 
 
-
 # Libraries and setup -----------------------------------------------------
+
+list.of.packages <- c("tidyverse", "rgdal", sf, downloader)
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
 
 library(tidyverse)
 library(rgdal)
@@ -43,7 +47,6 @@ download(url = url.kontur.data,
          mode="wb") # downloads zip folder into current directory
 
 R.utils::gunzip("kontur_data.gz", destname = "kontur_data.gpkg")
-
 
 
 # OSM boundries -----------------------------------------------------------
