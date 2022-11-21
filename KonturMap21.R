@@ -20,9 +20,6 @@
 
 ## set working directory for to current folder
 
-setwd(dirname(rstudioapi::getActiveDocumentContext()))
-
-
 # Libraries and setup -----------------------------------------------------
 
 library(tidyverse)
@@ -48,10 +45,10 @@ R.utils::gunzip("kontur_data.gz", destname = "kontur_data.gpkg")
 # OSM boundries -----------------------------------------------------------
 
 # Specify countries here
-place.names <- c("Nauru", "Andorra", "Grenada", "Barbados", "Liechtenstein")
+place.names <- c("Andorra", "Nauru", "Barbados", 
+                  "Mauritius", "Sri Lanka")
 
 # initate lists (too cluncky, might be shortend)
-pol.borders <- list()
 borders <- list()
 data.pop <- list()
 xplot <- list()
@@ -75,7 +72,6 @@ for (i in place.names){
       st_geometry() %>% 
       st_as_text()
     
-    
   } else {
     # execute with simple country shapes, simlar steps as above
     borders <- st_polygon(list(pol.borders)) %>%
@@ -93,7 +89,7 @@ for (i in place.names){
   # Create list of plots
   xplot[[i]] <- data.pop[[i]] %>% 
     ggplot(aes(fill = population)) +
-    geom_sf(lwd = NA) +
+    geom_sf(color = NA) +
     scale_fill_gradient(name = 'Population', low="#efedf5", high="#756bb1", 
                         guide = guide_colourbar(direction = "horizontal", 
                                                 barwidth = 10)) +
@@ -108,7 +104,6 @@ for (i in place.names){
   
 }
 
-
 # save all plots in list as pngs
 invisible(
   lapply(
@@ -122,44 +117,5 @@ invisible(
   )
 )
 
-
-
-
-
-# Trying things -----------------------------------------------------------
-
-
-
-
-data.try <- list()
-i = "Egypt"
-pol.borders <- getbb(i, format_out = 'polygon', featuretype = "country")
-
-
-borders_try <- st_polygon(pol.borders[order(sapply(pol.borders, length), decreasing = T)]) %>%
-  st_sfc(crs = 4326) %>% 
-  st_transform(3857) %>% 
-  st_geometry() %>% 
-  st_as_text()
-
-data.try <- st_read(dsn = 'data/kontur_data.gpkg', layer = "population",
-                    wkt_filter = borders_try)
-
-
-
-
-x <- ggplot(data = data.try,
-            aes(fill = population)) +
-  geom_sf(lwd = NA) 
-
-
-
-
-ggsave(filename="try1.png", 
-       plot=x,
-       bg = "grey20",
-       width = 22,
-       height = 22,
-       unit = "cm")
 
 
